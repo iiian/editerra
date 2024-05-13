@@ -1,0 +1,267 @@
+schema_version: '3'
+last_update: '2023-12-19'
+file_type: '837'
+file_name: '%file_name%.txt'
+map:
+  components:
+    - (S)header:
+        components:
+          - (R)ISA_INTERCHANGE_CONTROL_HEADER:
+              elements:
+                - (R)01: '"00"'
+                - (R)02: '"          "'
+                - (R)03: '"00"'
+                - (R)04: '"          "'
+                - (R)05: '"ZZ"'
+                - (R)06: '"ORGANIZATION   "'
+                - (R)07: '"ZZ"'
+                - (R)08: '"ORGANIZATION2  "'
+                - (R)09: $dateYYMMDD($$.created_at)
+                - (R)10: $dateHHMM($$.created_at)
+                - (R)11: '$$.delimiters.re ? $$.delimiters.re : "^"'
+                - (R)12: '"00501"'
+                - (R)13: $pad($.transaction_id, 'before', '0', 9)
+                - (R)14: '"1"'
+                - (R)15: '$$.is_prod ? "P" : "T"'
+                - (R)16: '$$.delimiters.co ? $$.delimiters.co : ":"'
+          - (R)GS_FUNCTIONAL_GROUP_HEADER:
+              elements:
+                - (R)01: '"HC"'
+                - (R)02: '"ORGANIZATION"'
+                - (R)03: '"ORGANIZATION2"'
+                - (R)04: $dateYYYYMMDD($$.created_at)
+                - (R)05: $dateHHMMSSSS($$.created_at)
+                - (R)06: $.transaction_id
+                - (R)07: '"X"'
+                - (R)08: '"005010X223A2"'
+          - (R)ST_TRANSACTION_SET_HEADER:
+              elements:
+                - (R)01: '"837"'
+                - (R)02: $st02()
+                - (S)03: '"005010X223A2"'
+          - (R)BHT_BEGINNING_OF_HIERARCHICAL_TRANSACTION:
+              elements:
+                - (R)01: '"0019"'
+                - (R)02: '"00"'
+                - (R)03: $$.name + $$.claims[0].image_name
+                - (R)04: $dateYYYYMMDD($$.created_at)
+                - (R)05: $dateHHMMSSSS($$.created_at)
+                - (R)06: '"CH"'
+    - (S)1000A:
+        components:
+          - (R)NM1_SUBMITTER_NAME:
+              elements:
+                - (R)01: '"23"'
+                - (R)02: '"1"'
+                - (R)03: '"ORGANIZATION"'
+                - (R)08: '"23"'
+                - (R)09: '"0000000000"'
+          - (R)PER_SUBMITTER_EDI_CONTACT_INFORMATION:
+              elements:
+                - (R)01: '"IC"'
+                - (R)02: '"JOHN DOE"'
+                - (R)03: '"TE"'
+                - (R)04: '"0000000000"'
+                - (S)05: '"FX"'
+                - (S)06: '"0000000000"'
+    - (S)1000B:
+        components:
+          - (R)NM1_RECEIVER_NAME:
+              elements:
+                - (R)01: '"23"'
+                - (R)02: '"2"'
+                - (R)03: '"ORGANIZATION2"'
+                - (R)08: '"23"'
+                - (R)09: '"ORGANIZATION2"'
+    - (R)body:
+        context: $$.claims
+        array: true
+        components:
+          - (R)2000A:
+              components:
+                - (R)HL_BILLING/PAY-TO_PROVIDER_HIERARCHICAL_LEVEL:
+                    elements:
+                      - (R)01: $hl("billing", null)
+                      - (R)03: '"20"'
+                      - (R)04: '"1"'
+                - (R)NM1_BILLING_PROVIDER_NAME:
+                    elements:
+                      - (R)01: '"85"'
+                      - (R)02: '"2"'
+                      - (R)03: |
+                          $fallback([
+                            $.ExpBillingName,
+                            "UNK"
+                          ])
+                      - (R)08: '"XX"'
+                      - (R)09: |
+                          $fallback([
+                            $.NPI,
+                            "0000000000"
+                          ])
+                - (S)2010AA:
+                    components:
+                      - (R)N3_BILLING_PROVIDER_ADDRESS__:
+                          elements:
+                            - (R)01: '"UNKNOWN ADDRESS"'
+                      - (R)N4_BILLING_PROVIDER_CITY/STATE/ZIP_CODE:
+                          elements:
+                            - (R)01: |
+                                $fallback([
+                                  $.ExpBillingCity,
+                                  "UNK"
+                                ])
+                            - (R)02: |
+                                $fallback([
+                                  $.ExpBillingState,
+                                  "MA"
+                                ])
+                            - (R)03: |
+                                $fallback([
+                                  $zip9($.ExpBillingZip),
+                                  "999990000"
+                                ])
+                      - (S)REF_CREDIT/DEBIT_CARD_BILLING_INFORMATION:
+                          elements:
+                            - (R)01: '"EI"'
+                            - (R)02: |
+                                $fallback([
+                                  $.FederalTaxID,
+                                  "UNK"
+                                ])
+                - (S)2010AB:
+                    components:
+                      - (S)NM1_PAY-TO_PROVIDER_NAME__:
+                          elements:
+                            - (R)01: '"87"'
+                            - (R)02: '"2"'
+                      - (R)N3_PAY-TO_PROVIDER_ADDRESS__:
+                          elements:
+                            - (R)01: $.ExpBillingAddr1
+                            - (S)02: $.ExpBillingAddr2
+                      - (R)N4_PAY-TO_PROVIDER_CITY/STATE/ZIP_CODE:
+                          elements:
+                            - (R)01: $.ExpBillingCity
+                            - (R)02: $.ExpBillingState
+                            - (R)03: $.ExpBillingZip
+          - (S)2000B:
+              components:
+                - (R)HL_SUBSCRIBER_HIERARCHICAL_LEVEL:
+                    elements:
+                      - (R)01: $hl("subscriber", "billing")
+                      - (R)02: $hlParent("billing")
+                      - (R)03: '"22"'
+                - (R)SBR_SUBSCRIBER_INFORMATION:
+                    elements:
+                      - (R)01: '"P"'
+                      - (S)09: '"ZZ"'
+                - (S)2010BA:
+                    components:
+                      - (S)ADDTL_PATIENT_ADDRESS_DATA:
+                          if: $.ELIG_Patient_Relationship === '18'
+                          components:
+                            - (R)N3_SUBSCRIBER_ADDRESS__:
+                                elements:
+                                  - (R)01: |
+                                      $fallback([
+                                        $.PatientAddress__Address1,
+                                        "UNK"
+                                      ])
+                                  - (S)02: $.PatientAddress__Address2
+                            - (R)N4_SUBSCRIBER_CITY/STATE/ZIP_CODE:
+                                elements:
+                                  - (R)01: |
+                                      $fallback([
+                                        $.PatientAddress__City,
+                                        "UNKNOWN"
+                                      ])
+                                  - (R)02: |
+                                      $fallback([
+                                        $.PatientAddress__State,
+                                        "MA"
+                                      ])
+                                  - (R)03: |
+                                      $fallback([
+                                        $.PatientAddress__Zip,
+                                        "99999"
+                                      ])
+                            - (S)DMG_SUBSCRIBER_DEMOGRAPHIC_INFORMATION:
+                                elements:
+                                  - (R)01: '"D8"'
+                                  - (R)02: $dateFmt($.ELIG_Patient_DOB, "YYYYMMDD")
+                                  - (R)03: |
+                                      $fallback([
+                                        $.PatientSex,
+                                        "U"
+                                      ])
+                - (S)2010BB:
+                    components:
+                      - (R)NM1_PAYER_NAME:
+                          elements:
+                            - (R)01: '"PR"'
+                            - (R)02: '"2"'
+                            - (R)03: '"NEMS"'
+                            - (S)08: '"PI"'
+                            - (S)09: '"NEMS"'
+          - (S)2000C:
+              if: $.Patient_Relationship !== '18'
+              components:
+                - (S)HL_PATIENT_HIERARCHICAL_LEVEL:
+                    elements:
+                      - (R)01: $hl("patient", "subscriber")
+                      - (R)02: $hlParent("subscriber")
+                      - (R)03: '"23"'
+                      - (R)04: '"0"'
+                - (R)PAT_PATIENT_INFORMATION:
+                    elements:
+                      - (S)01: |
+                          $fallback([
+                            $.Output_Patient_as_Insured,
+                            $.ELIG_Patient_Relationship,
+                            "21"
+                          ])
+                - (S)2010CA:
+                    components:
+                      - (R)NM1_PATIENT_NAME___:
+                          elements:
+                            - (R)01: '"QC"'
+                            - (R)02: '"1"'
+                      - (R)N3_PATIENT_ADDRESS__:
+                          elements:
+                            - (R)01: |
+                                $fallback([
+                                  $.PatientAddress__Address1,
+                                  "UNK"
+                                ])
+                            - (S)02: $.PatientAddress__Address2
+                      - (R)N4_PATIENT_CITY/STATE/ZIP_CODE:
+                          elements:
+                            - (R)01: >-
+                                $fallback([$.PatientAddress__City, 
+                                $.InsuredAddress__City,  "UNK"])
+                            - (R)02: >-
+                                $fallback([$.PatientAddress__State,
+                                $.InsuredAddress__State, "MA"])
+                            - (R)03: >-
+                                $fallback([$.PatientAddress__Zip,  
+                                $.InsuredAddress__Zip,   "99999"])
+                      - (R)DMG_PATIENT_DEMOGRAPHIC_INFORMATION:
+                          elements:
+                            - (R)01: '"D8"'
+                            - (R)02: |
+                                $fallback([
+                                  $dateFmt($.ELIG_Patient_DOB, "YYYYMMDD"),
+                                  "19010101"
+                                ])
+                            - (R)03: |
+                                $fallback([
+                                  $.PatientSex,
+                                  "U"
+                                ])
+    - (S)footer:
+        components:
+          - (R)GE_FUNCTION_GROUP_TRAILER:
+              elements:
+                - (R)01: '"1"'
+                - (R)02: $.transaction_id + 1
+chunks: []
