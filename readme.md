@@ -5,9 +5,6 @@
 ```YAML
 # example Editerra map
 schema_version: '3'
-last_update: '2023-12-19'
-file_type: '837'
-file_name: '%file_name%.txt'
 map:
   components:
       # (S) marks optional "scopes". Scopes are a conceptual superset of EDI loops.
