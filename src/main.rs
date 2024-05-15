@@ -38,8 +38,8 @@ fn main() -> Result<(), MapEdiError> {
 
     let start = Instant::now();
     let result = map_edi::map_edi(edi_map_doc, &Delimiters::default(), &mut expr_engine)?;
-    println!("{:?}", start.elapsed());
-    println!("{}", result.unwrap_or("empty failure".to_string()));
+    
+    
 
     Ok(())
 }

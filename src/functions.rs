@@ -26,6 +26,10 @@ pub fn register_functions_default(context: &mut Context) -> Result<(), MapEdiErr
         Ok(())
     }
 
+    register_callback(context, "$dateHHMM", 1, date_hhmm)?;
+    register_callback(context, "$dateHHMMSSSS", 1, todo)?;
+    register_callback(context, "$dateYYYYMMDD", 1, todo)?;
+    register_callback(context, "$dateYYMMDD", 1, date_yymmdd)?;
     register_callback(context, "$dateRefmt", 1, date_refmt)?;
     register_callback(context, "$fallback", 1, fallback)?;
     register_callback(context, "$hl", 1, todo)?;
@@ -33,7 +37,9 @@ pub fn register_functions_default(context: &mut Context) -> Result<(), MapEdiErr
     register_callback(context, "$st02", 1, todo)?;
     register_callback(context, "$se01", 1, todo)?;
     register_callback(context, "$se02", 1, todo)?;
-    register_callback(context, "$pad", 1, todo)?;
+    register_callback(context, "$zip9", 1, todo)?;
+    register_callback(context, "$pad", 4, pad)?;
+    register_callback(context, "print", 1, print)?;
     Ok(())
 }
 
@@ -83,6 +89,25 @@ fn date_yyyymmdd(_: &JsValue, args: &[JsValue], _: &mut Context) -> JsResult<JsV
 }
 
 #[allow(dead_code)]
+fn date_yymmdd(_: &JsValue, args: &[JsValue], _: &mut Context) -> JsResult<JsValue> {
+    let iso_date = match args.iter().nth(0) {
+        Some(iso_date) => match iso_date {
+            JsValue::String(iso_date) => iso_date
+                .to_std_string()
+                .map_err(|_| JsError::from_native(JsNativeError::error()))?,
+            _ => return Ok(JsValue::Null),
+        },
+        None => return Ok(JsValue::Null),
+    };
+
+    let yyyymmdd_date = DateTime::parse_from_rfc3339(&iso_date)
+        .map(|date| date.format("%C%m%d").to_string())
+        .map_err(|_| JsError::from_native(JsNativeError::error().with_message("not ISO-8601")))?;
+
+    Ok(JsValue::String(js_string!(yyyymmdd_date)))
+}
+
+#[allow(dead_code)]
 fn date_hhmm(_: &JsValue, args: &[JsValue], _: &mut Context) -> JsResult<JsValue> {
     let iso_date = match args.iter().nth(0) {
         Some(iso_date) => match iso_date {
@@ -90,7 +115,6 @@ fn date_hhmm(_: &JsValue, args: &[JsValue], _: &mut Context) -> JsResult<JsValue
                 .to_std_string()
                 .map_err(|_| JsError::from_native(JsNativeError::error()))?,
             x => {
-                println!("{:?}", x);
                 return Ok(JsValue::Null);
             }
         },
@@ -148,4 +172,32 @@ fn fallback(_: &JsValue, args: &[JsValue], _: &mut Context) -> JsResult<JsValue>
 
 fn todo(_: &JsValue, _: &[JsValue], _: &mut Context) -> JsResult<JsValue> {
     Ok(JsValue::String(js_string!("todo!")))
+}
+
+fn pad(_: &JsValue, _args: &[JsValue], _: &mut Context) -> JsResult<JsValue> {
+    Ok(JsValue::String(js_string!("todo!")))
+}
+
+fn print(_: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsValue> {
+    let json = context
+        .global_object()
+        .get(js_string!("JSON"), context)
+        .unwrap();
+
+    let stringify = json
+        .as_object()
+        .unwrap()
+        .get(js_string!("stringify"), context)?;
+
+    let value = stringify
+        .as_callable()
+        .unwrap()
+        .call(&json, args, context)
+        .map(|x| match x {
+            JsValue::String(x) => x.to_std_string(),
+            _ => panic!("it just shouldnt"),
+        })?
+        .unwrap();
+
+    Ok(JsValue::undefined())
 }

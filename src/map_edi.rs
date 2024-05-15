@@ -113,9 +113,9 @@ fn evaluate_scope(
         Scope::Attach(Attach {
             attach,
             cnd,
-            array,
             required,
             name,
+            ..
         }) => {
             // Example:
             // ```
@@ -139,11 +139,6 @@ fn evaluate_scope(
                         }
                     });
                 if let Some(scope) = target_scope {
-                    if *array {
-                        Ok(IRNode::LoopNode(LoopNode {
-                            name: format!("virt"),
-                        }))
-                    }
                     evaluate_scope(engine, scope, chunks)
                 } else {
                     Ok(IRNode::LoopNode(LoopNode {
@@ -174,7 +169,7 @@ fn evaluate_scope(
                     array,
                     components,
                     name,
-                }) => evaluate_loop(components, context, engine, chunks, *required, name),
+                }) => evaluate_loop(components, context, engine, chunks, *required, name, *array),
                 Loop::Conditional(ConditionalLoop {
                     required,
                     name,
@@ -186,7 +181,9 @@ fn evaluate_scope(
                 }) => {
                     if engine.eval_bool(cnd)? {
                         if let Some(components) = then_components {
-                            evaluate_loop(components, context, engine, chunks, *required, name)
+                            evaluate_loop(
+                                components, context, engine, chunks, *required, name, *array,
+                            )
                         } else {
                             Ok(IRNode::SegmentNode(SegmentNode {
                                 name: name.clone(),
@@ -195,7 +192,7 @@ fn evaluate_scope(
                             }))
                         }
                     } else if let Some(components) = else_components {
-                        evaluate_loop(components, context, engine, chunks, *required, name)
+                        evaluate_loop(components, context, engine, chunks, *required, name, *array)
                     } else {
                         Ok(IRNode::SegmentNode(SegmentNode {
                             name: name.clone(),
@@ -258,24 +255,66 @@ fn evaluate_loop(
     chunks: &Option<Vec<Scope>>,
     required: bool,
     name: &String,
+    array: bool,
 ) -> Result<IRNode, MapEdiError> {
     if let Some(context_expr) = context {
-        engine.exec(&String::from("context_stack.push($)"))?;
+        engine.exec(&String::from("ctx.push($)"))?;
         engine.exec(&format!("$ = {};", context_expr))?;
     }
 
-    let constructed = extract_oks(
-        components
-            .iter()
-            .map(|scope| evaluate_scope(engine, scope, chunks))
-            .collect(),
-    )?;
+    let constructed = if array {
+        let mut scopes: Vec<IRNode> = vec![];
+        engine.exec(&String::from("iter.push(0)"))?;
+
+        let len = engine.eval(&String::from("$.length")).map(|v| match v {
+            boa_engine::JsValue::Integer(i) => Ok(i),
+            _ => Err(MapEdiError::ExprEngineErr(String::from(
+                "array scope had no length",
+            ))),
+        })??;
+        for _ in 0..len {
+            engine.exec(&String::from(
+                r"
+                $ = ctx.at(-1);
+                ctx.push($);
+                ",
+            ))?;
+
+            scopes.extend(extract_oks(
+                components
+                    .iter()
+                    .map(|scope| -> Result<IRNode, MapEdiError> {
+                        evaluate_scope(engine, scope, chunks)
+                    })
+                    .collect(),
+            )?);
+
+            engine.exec(&String::from(
+                r"
+                iter[iter.length] += 1;
+                ctx.pop();
+                $ = ctx.at(-1);
+                ",
+            ))?;
+        }
+
+        engine.exec(&String::from("iter.pop()"))?;
+
+        scopes
+    } else {
+        extract_oks(
+            components
+                .iter()
+                .map(|scope| -> Result<IRNode, MapEdiError> {
+                    evaluate_scope(engine, scope, chunks)
+                })
+                .collect(),
+        )?
+    };
 
     if let Some(_) = context {
-        engine.exec(&String::from("context_stack.pop();"))?;
-        engine.exec(&String::from(
-            "$ = context_stack[context_stack.length - 1];",
-        ))?;
+        engine.exec(&String::from("ctx.pop();"))?;
+        engine.exec(&String::from("$ = ctx.at(-1)"))?;
     }
 
     Ok(IRNode::LoopNode(LoopNode {
@@ -448,6 +487,7 @@ fn ir2edi(node: &IRNode, del: &Delimiters) -> Result<Option<String>, MapEdiError
                         None => result.extend(nl.clone().chars()),
                     };
                 }
+                result.extend(nl.chars());
 
                 Ok(Some(result))
             } else if !required {

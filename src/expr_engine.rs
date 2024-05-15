@@ -34,12 +34,11 @@ impl ExprEngine {
         self.boa
             .register_global_property(js_string!("$$"), value, Attribute::all())
             .map_err(|e| MapEdiError::ExprEngineErr(e.to_string()))?;
-        // var $ = null;
         self.boa
-            .register_global_property(js_string!("$"), JsValue::null(), Attribute::all())
-            .map_err(|e| MapEdiError::ExprEngineErr(e.to_string()))?;
+            .eval(Source::from_bytes(&String::from("var $ = $$;")))
+            .map_err(exp_errf!())?;
 
-        // var context_stack = [];
+        // var ctx = [];
         let array_constructor = self
             .boa
             .global_object()
@@ -51,7 +50,15 @@ impl ExprEngine {
             .construct(&[], None, &mut self.boa)
             .map_err(exp_errf!())?;
         self.boa
-            .register_global_property(js_string!("context_stack"), js_array, Attribute::all())
+            .register_global_property(js_string!("ctx"), js_array, Attribute::all())
+            .map_err(exp_errf!())?;
+        let js_array = array_constructor
+            .as_constructor()
+            .unwrap()
+            .construct(&[], None, &mut self.boa)
+            .map_err(exp_errf!())?;
+        self.boa
+            .register_global_property(js_string!("iter"), js_array, Attribute::all())
             .map_err(exp_errf!())?;
 
         Ok(())
@@ -68,7 +75,7 @@ impl ExprEngine {
             .map_err(|e| MapEdiError::ExprEngineErr(e.to_string()))?;
         self.boa
             .global_object()
-            .delete_property_or_throw(js_string!("context_stack"), &mut self.boa)
+            .delete_property_or_throw(js_string!("ctx"), &mut self.boa)
             .map_err(|e| MapEdiError::ExprEngineErr(e.to_string()))?;
 
         Ok(())
@@ -102,7 +109,7 @@ impl ExprEngine {
                 JsValue::Object(_) => true,
                 JsValue::Symbol(_) => true,
             })
-            .map_err(|e| MapEdiError::ExprEngineErr(e.to_string()))
+            .map_err(exp_errf!())
     }
 
     pub fn eval_string(&mut self, expr_raw: &String) -> Result<Option<String>, MapEdiError> {
@@ -115,16 +122,16 @@ impl ExprEngine {
                 JsValue::Rational(r) => Some(r.to_string()),
                 JsValue::Integer(i) => Some(i.to_string()),
                 JsValue::BigInt(b) => Some(b.to_string()),
-                JsValue::Object(_) => Some("[Object object]".to_string()),
+                JsValue::Object(x) => Some("[Object object]".to_string()),
                 JsValue::Symbol(_) => Some("[Symbol]".to_string()),
             })
-            .map_err(|e| MapEdiError::ExprEngineErr(e.to_string()))
+            .map_err(exp_errf!())
     }
 
     pub fn exec(&mut self, expr_raw: &String) -> Result<(), MapEdiError> {
         self.boa
             .eval(Source::from_bytes(expr_raw))
-            .map_err(|e| MapEdiError::ExprEngineErr(e.to_string()))?;
+            .map_err(exp_errf!())?;
 
         Ok(())
     }
