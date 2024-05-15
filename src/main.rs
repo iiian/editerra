@@ -1,9 +1,9 @@
 use std::{
     fs::{File, OpenOptions},
     io::Read,
+    time::Instant,
 };
 
-use actix::clock::Instant;
 use editerra::{
     error::MapEdiError,
     expr_engine::ExprEngine,
@@ -38,8 +38,8 @@ fn main() -> Result<(), MapEdiError> {
 
     let start = Instant::now();
     let result = map_edi::map_edi(edi_map_doc, &Delimiters::default(), &mut expr_engine)?;
-    
-    
+    println!("{}", result.unwrap());
+    println!("{:?}", start.elapsed());
 
     Ok(())
 }

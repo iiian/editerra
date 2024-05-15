@@ -36,30 +36,30 @@ impl ExprEngine {
             .map_err(|e| MapEdiError::ExprEngineErr(e.to_string()))?;
         self.boa
             .eval(Source::from_bytes(&String::from("var $ = $$;")))
-            .map_err(exp_errf!())?;
+            .map_err(exp_errf!("$ =$$"))?;
 
         // var ctx = [];
         let array_constructor = self
             .boa
             .global_object()
             .get(js_string!("Array"), &mut self.boa)
-            .map_err(exp_errf!())?;
+            .map_err(exp_errf!("get arr constructor"))?;
         let js_array = array_constructor
             .as_constructor()
             .unwrap()
             .construct(&[], None, &mut self.boa)
-            .map_err(exp_errf!())?;
+            .map_err(exp_errf!("get arr constructor"))?;
         self.boa
             .register_global_property(js_string!("ctx"), js_array, Attribute::all())
-            .map_err(exp_errf!())?;
+            .map_err(exp_errf!("create context"))?;
         let js_array = array_constructor
             .as_constructor()
             .unwrap()
             .construct(&[], None, &mut self.boa)
-            .map_err(exp_errf!())?;
+            .map_err(exp_errf!("config ctx"))?;
         self.boa
             .register_global_property(js_string!("iter"), js_array, Attribute::all())
-            .map_err(exp_errf!())?;
+            .map_err(exp_errf!("config iter"))?;
 
         Ok(())
     }
@@ -109,7 +109,11 @@ impl ExprEngine {
                 JsValue::Object(_) => true,
                 JsValue::Symbol(_) => true,
             })
-            .map_err(exp_errf!())
+            .map_err(exp_errf!("eval_bool"))
+            .map_err(|e| {
+                println!("{}", expr_raw);
+                e
+            })
     }
 
     pub fn eval_string(&mut self, expr_raw: &String) -> Result<Option<String>, MapEdiError> {
@@ -122,16 +126,23 @@ impl ExprEngine {
                 JsValue::Rational(r) => Some(r.to_string()),
                 JsValue::Integer(i) => Some(i.to_string()),
                 JsValue::BigInt(b) => Some(b.to_string()),
-                JsValue::Object(x) => Some("[Object object]".to_string()),
+                JsValue::Object(_) => Some("[Object object]".to_string()),
                 JsValue::Symbol(_) => Some("[Symbol]".to_string()),
             })
-            .map_err(exp_errf!())
+            .map_err(exp_errf!("eval_string"))
+            .map_err(|e| {
+                println!("{}", expr_raw);
+                self.boa
+                    .eval(Source::from_bytes(&String::from("print($);")))
+                    .expect("fuck?");
+                e
+            })
     }
 
     pub fn exec(&mut self, expr_raw: &String) -> Result<(), MapEdiError> {
         self.boa
             .eval(Source::from_bytes(expr_raw))
-            .map_err(exp_errf!())?;
+            .map_err(exp_errf!("exec"))?;
 
         Ok(())
     }

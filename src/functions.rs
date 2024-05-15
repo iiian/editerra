@@ -21,7 +21,7 @@ pub fn register_functions_default(context: &mut Context) -> Result<(), MapEdiErr
     {
         context
             .register_global_callable(js_string!(name), len, NativeFunction::from_copy_closure(f))
-            .map_err(exp_errf!())?;
+            .map_err(exp_errf!(name))?;
 
         Ok(())
     }
@@ -30,6 +30,7 @@ pub fn register_functions_default(context: &mut Context) -> Result<(), MapEdiErr
     register_callback(context, "$dateHHMMSSSS", 1, todo)?;
     register_callback(context, "$dateYYYYMMDD", 1, todo)?;
     register_callback(context, "$dateYYMMDD", 1, date_yymmdd)?;
+    register_callback(context, "$dateFmt", 1, date_refmt)?;
     register_callback(context, "$dateRefmt", 1, date_refmt)?;
     register_callback(context, "$fallback", 1, fallback)?;
     register_callback(context, "$hl", 1, todo)?;
@@ -40,6 +41,10 @@ pub fn register_functions_default(context: &mut Context) -> Result<(), MapEdiErr
     register_callback(context, "$zip9", 1, todo)?;
     register_callback(context, "$pad", 4, pad)?;
     register_callback(context, "print", 1, print)?;
+    register_callback(context, "$stripPunc", 1, todo)?;
+    register_callback(context, "$middleName", 1, todo)?;
+    register_callback(context, "$firstName", 1, todo)?;
+    register_callback(context, "$lastName", 1, todo)?;
     Ok(())
 }
 
@@ -62,7 +67,7 @@ where
                     length,
                     NativeFunction::from_copy_closure(body),
                 )
-                .map_err(exp_errf!())?;
+                .map_err(exp_errf!(name))?;
         }
 
         Ok(())
@@ -193,11 +198,12 @@ fn print(_: &JsValue, args: &[JsValue], context: &mut Context) -> JsResult<JsVal
         .as_callable()
         .unwrap()
         .call(&json, args, context)
-        .map(|x| match x {
-            JsValue::String(x) => x.to_std_string(),
-            _ => panic!("it just shouldnt"),
-        })?
+        .map(|x| x.to_string(context))?
+        .unwrap()
+        .to_std_string()
         .unwrap();
+
+    println!("{}", value);
 
     Ok(JsValue::undefined())
 }

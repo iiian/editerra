@@ -1,7 +1,7 @@
 schema_version: '3'
 last_update: '2023-12-19'
 file_type: '837'
-file_name: '%file_name%.txt'
+file_name: '%batch_name%.txt'
 map:
   components:
     - (S)header:
@@ -13,25 +13,25 @@ map:
                 - (R)03: '"00"'
                 - (R)04: '"          "'
                 - (R)05: '"ZZ"'
-                - (R)06: '"ORGANIZATION   "'
+                - (R)06: '"DOCUSTREAM     "'
                 - (R)07: '"ZZ"'
-                - (R)08: '"ORGANIZATION2  "'
+                - (R)08: '"NEMS           "'
                 - (R)09: $dateYYMMDD($$.created_at)
                 - (R)10: $dateHHMM($$.created_at)
                 - (R)11: '$$.delimiters.re ? $$.delimiters.re : "^"'
                 - (R)12: '"00501"'
-                - (R)13: $pad($.transaction_id, 'before', '0', 9)
+                - (R)13: $pad($$.transaction_id, 'before', '0', 9)
                 - (R)14: '"1"'
                 - (R)15: '$$.is_prod ? "P" : "T"'
                 - (R)16: '$$.delimiters.co ? $$.delimiters.co : ":"'
           - (R)GS_FUNCTIONAL_GROUP_HEADER:
               elements:
                 - (R)01: '"HC"'
-                - (R)02: '"ORGANIZATION"'
-                - (R)03: '"ORGANIZATION2"'
+                - (R)02: '"DOCUSTREAM"'
+                - (R)03: '"NEMS"'
                 - (R)04: $dateYYYYMMDD($$.created_at)
                 - (R)05: $dateHHMMSSSS($$.created_at)
-                - (R)06: $.transaction_id
+                - (R)06: $$.transaction_id
                 - (R)07: '"X"'
                 - (R)08: '"005010X223A2"'
           - (R)ST_TRANSACTION_SET_HEADER:
@@ -43,7 +43,7 @@ map:
               elements:
                 - (R)01: '"0019"'
                 - (R)02: '"00"'
-                - (R)03: $$.name + $$.claims[0].image_name
+                - (R)03: $.batch_name + $$.claims[0].image_name
                 - (R)04: $dateYYYYMMDD($$.created_at)
                 - (R)05: $dateHHMMSSSS($$.created_at)
                 - (R)06: '"CH"'
@@ -51,28 +51,28 @@ map:
         components:
           - (R)NM1_SUBMITTER_NAME:
               elements:
-                - (R)01: '"23"'
-                - (R)02: '"1"'
-                - (R)03: '"ORGANIZATION"'
-                - (R)08: '"23"'
-                - (R)09: '"0000000000"'
+                - (R)01: '"41"'
+                - (R)02: '"2"'
+                - (R)03: '"DOCUSTREAM"'
+                - (R)08: '"46"'
+                - (R)09: '"943302272"'
           - (R)PER_SUBMITTER_EDI_CONTACT_INFORMATION:
               elements:
                 - (R)01: '"IC"'
-                - (R)02: '"JOHN DOE"'
+                - (R)02: '"STEVE BROWN"'
                 - (R)03: '"TE"'
-                - (R)04: '"0000000000"'
+                - (R)04: '"5102640900"'
                 - (S)05: '"FX"'
-                - (S)06: '"0000000000"'
+                - (S)06: '"5102649608"'
     - (S)1000B:
         components:
           - (R)NM1_RECEIVER_NAME:
               elements:
-                - (R)01: '"23"'
+                - (R)01: '"40"'
                 - (R)02: '"2"'
-                - (R)03: '"ORGANIZATION2"'
-                - (R)08: '"23"'
-                - (R)09: '"ORGANIZATION2"'
+                - (R)03: '"NEMS"'
+                - (R)08: '"46"'
+                - (R)09: '"NEMS"'
     - (R)body:
         context: $$.claims
         array: true
@@ -97,11 +97,898 @@ map:
                       - (R)09: |
                           $fallback(
                             $.NPI,
-                            "0000000000"
+                            "0000000006"
                           )
-    - (R)footer:
+                - (S)2010AA:
+                    components:
+                      - (R)N3_BILLING_PROVIDER_ADDRESS__:
+                          elements:
+                            - (R)01: '"UNKNOWN ADDRESS"'
+                      - (R)N4_BILLING_PROVIDER_CITY/STATE/ZIP_CODE:
+                          elements:
+                            - (R)01: |
+                                $fallback(
+                                  $.ExpBillingCity,
+                                  "UNK"
+                                )
+                            - (R)02: |
+                                $fallback(
+                                  $.ExpBillingState,
+                                  "MA"
+                                )
+                            - (R)03: |
+                                $fallback(
+                                  $zip9($.ExpBillingZip),
+                                  "999990000"
+                                )
+                      - (S)REF_CREDIT/DEBIT_CARD_BILLING_INFORMATION:
+                          elements:
+                            - (R)01: '"EI"'
+                            - (R)02: |
+                                $fallback(
+                                  $.FederalTaxID,
+                                  "UNK"
+                                )
+                - (S)2010AB:
+                    components:
+                      - (S)NM1_PAY-TO_PROVIDER_NAME__:
+                          elements:
+                            - (R)01: '"87"'
+                            - (R)02: '"2"'
+                      - (R)N3_PAY-TO_PROVIDER_ADDRESS__:
+                          elements:
+                            - (R)01: $.ExpBillingAddr1
+                            - (S)02: $.ExpBillingAddr2
+                      - (R)N4_PAY-TO_PROVIDER_CITY/STATE/ZIP_CODE:
+                          elements:
+                            - (R)01: $.ExpBillingCity
+                            - (R)02: $.ExpBillingState
+                            - (R)03: $.ExpBillingZip
+          - (S)2000B:
+              components:
+                - (R)HL_SUBSCRIBER_HIERARCHICAL_LEVEL:
+                    elements:
+                      - (R)01: $hl("subscriber", "billing")
+                      - (R)02: $hlParent("billing")
+                      - (R)03: '"22"'
+                      - (R)04: '$.ELIG_Patient_Relationship === "18" ? "0" : 1'
+                - (R)SBR_SUBSCRIBER_INFORMATION:
+                    elements:
+                      - (R)01: '"P"'
+                      - (S)02: '$.ELIG_Patient_Relationship === "18" ? "18" : null'
+                      - (S)03: |
+                          $fallback(
+                            $.ELIG_InsuredPolicyGroupFECA,
+                            "UNK"
+                          )
+                      - (S)09: '"ZZ"'
+                - (S)2010BA:
+                    components:
+                      - (R)NM1_SUBSCRIBER_NAME__:
+                          elements:
+                            - (R)01: '"IL"'
+                            - (R)02: '"1"'
+                            - (R)03: |
+                                $fallback(
+                                  $lastName($.ExpInsName),
+                                  "UNK"
+                                )
+                            - (S)04: |
+                                $fallback(
+                                  $firstName($.ExpInsName),
+                                  "UNK"
+                                )
+                            - (S)05: $middleName($.ExpInsName)
+                            - (S)08: '$stripPunc($.ELIG_InsuredID) ? "MI" : null'
+                            - (S)09: $stripPunc($.ELIG_InsuredID)
+                      - (S)ADDTL_PATIENT_ADDRESS_DATA:
+                          if: $.ELIG_Patient_Relationship === '18'
+                          components:
+                            - (R)N3_SUBSCRIBER_ADDRESS__:
+                                elements:
+                                  - (R)01: |
+                                      $fallback(
+                                        $.PatientAddress__Address1,
+                                        "UNK"
+                                      )
+                                  - (S)02: $.PatientAddress__Address2
+                            - (R)N4_SUBSCRIBER_CITY/STATE/ZIP_CODE:
+                                elements:
+                                  - (R)01: |
+                                      $fallback(
+                                        $.PatientAddress__City,
+                                        "UNKNOWN"
+                                      )
+                                  - (R)02: |
+                                      $fallback(
+                                        $.PatientAddress__State,
+                                        "MA"
+                                      )
+                                  - (R)03: |
+                                      $fallback(
+                                        $.PatientAddress__Zip,
+                                        "99999"
+                                      )
+                            - (S)DMG_SUBSCRIBER_DEMOGRAPHIC_INFORMATION:
+                                elements:
+                                  - (R)01: '"D8"'
+                                  - (R)02: $dateFmt($.ELIG_Patient_DOB, "YYYYMMDD")
+                                  - (R)03: |
+                                      $fallback(
+                                        $.PatientSex,
+                                        "U"
+                                      )
+                - (S)2010BB:
+                    components:
+                      - (R)NM1_PAYER_NAME:
+                          elements:
+                            - (R)01: '"PR"'
+                            - (R)02: '"2"'
+                            - (R)03: '"NEMS"'
+                            - (S)08: '"PI"'
+                            - (S)09: '"NEMS"'
+                - (S)2300_claim_info:
+                    if: $.ELIG_Patient_Relationship === '18'
+                    attach: '2300'
+          - (S)2000C:
+              if: $.ELIG_Patient_Relationship !== '18'
+              components:
+                - (S)HL_PATIENT_HIERARCHICAL_LEVEL:
+                    elements:
+                      - (R)01: $hl("patient", "subscriber")
+                      - (R)02: $hlParent("subscriber")
+                      - (R)03: '"23"'
+                      - (R)04: '"0"'
+                - (R)PAT_PATIENT_INFORMATION:
+                    elements:
+                      - (S)01: |
+                          $fallback(
+                            $.Output_Patient_as_Insured,
+                            $.ELIG_Patient_Relationship,
+                            "21"
+                          )
+                - (S)2010CA:
+                    components:
+                      - (R)NM1_PATIENT_NAME___:
+                          elements:
+                            - (R)01: '"QC"'
+                            - (R)02: '"1"'
+                            - (R)03: |
+                                $fallback(
+                                  $lastName($.ExpPatName),
+                                  "UNK"
+                                )
+                            - (R)04: |
+                                $fallback(
+                                  $firstName($.ExpPatName),
+                                  "UNK"
+                                )
+                            - (S)05: $middleName($.ExpPatName)
+                      - (R)N3_PATIENT_ADDRESS__:
+                          elements:
+                            - (R)01: |
+                                $fallback(
+                                  $.PatientAddress__Address1,
+                                  "UNK"
+                                )
+                            - (S)02: $.PatientAddress__Address2
+                      - (R)N4_PATIENT_CITY/STATE/ZIP_CODE:
+                          elements:
+                            - (R)01: >-
+                                $fallback($.PatientAddress__City, 
+                                $.InsuredAddress__City,  "UNK")
+                            - (R)02: >-
+                                $fallback($.PatientAddress__State,
+                                $.InsuredAddress__State, "MA")
+                            - (R)03: >-
+                                $fallback($.PatientAddress__Zip,  
+                                $.InsuredAddress__Zip,   "99999")
+                      - (R)DMG_PATIENT_DEMOGRAPHIC_INFORMATION:
+                          elements:
+                            - (R)01: '"D8"'
+                            - (R)02: |
+                                $fallback(
+                                  $dateFmt($.ELIG_Patient_DOB, "YYYYMMDD"),
+                                  "19010101"
+                                )
+                            - (R)03: |
+                                $fallback(
+                                  $.PatientSex,
+                                  "U"
+                                )
+                - (S)2300_claim_info:
+                    if: 'true'
+                    attach: '2300'
+    - (S)footer:
         components:
-          - (R)IEA_End_of_transaction:
+          - (R)SE_TRANSACTION_SET_TRAILER:
               elements:
-                - (R)01: 'goodbye!'
-chunks: []
+                - (R)01: $se01()
+                - (R)02: $se02()
+          - (R)GE_FUNCTION_GROUP_TRAILER:
+              elements:
+                - (R)01: '"1"'
+                - (R)02: $$.transaction_id + 1
+          - (R)IEA_INTERCHANGE_CONTROL_TRAILER:
+              elements:
+                - (R)01: '"1"'
+                - (R)02: $pad($$.transaction_id, 'before', '0', 9)
+chunks:
+  - (S)2300:
+      components:
+        - (R)CLM_CLAIM_INFORMATION:
+            elements:
+              - (R)01: |
+                  $fallback(
+                    $.PatientControlNo,
+                    "UNK"
+                  )
+              - (R)02: $centToDollar($.GrandTotal)
+              - (R)05:
+                  - (R)1: $substr($.TypeofBill, 0, 2)
+                  - (R)2: '"A"'
+                  - (R)3: $substr($.TypeofBill, 2, 1)
+              - (S)07: '"A"'
+              - (R)08: '"Y"'
+              - (R)09: '"Y"'
+        - (S)DTP_DATE_-_DISCHARGE_HOUR__UB92_:
+            elements:
+              - (R)01: '"096"'
+              - (R)02: '"TM"'
+              - (R)03: $.ExpDischargeHour + "00"
+        - (S)DTP_DATE_-_STATEMENT_DATES:
+            elements:
+              - (R)01: '"434"'
+              - (R)02: '"RD8"'
+              - (R)03: >
+                  $dateFmt($.CoverageFromDate, "YYYYMMDD") + "-" +
+                  $dateFmt($.CoverageToDate, "YYYYMMDD")
+        - (S)DTP_DATE_-_ADMISSION_DATE/HOUR__UB92_:
+            elements:
+              - (R)01: '"435"'
+              - (R)02: '"DT"'
+              - (R)03: |
+                    date === $dateFmt($.ExpAdminDate, "YYYYMMDD");
+                    (date && $.ExpAdminHour)
+                      ? $date + $.ExpAdminHour + "00"
+                      : null
+        - (R)CL1_INSTITUTIONAL_CLAIM_CODE:
+            elements:
+              - (S)01: |
+                  $fallback(
+                    $.AdmissionType,
+                    "9"
+                  )
+              - (S)02: |
+                  var $x = $substr($.TypeofBill, 0, 2);
+                  $x === "14" ? null : $.AdmissionSource
+              - (S)03: |
+                  $fallback(
+                    $.PatientStatus,
+                    "01"
+                  )
+        - (S)REF_PRIOR_AUTHORIZATION_OR_REFERRAL_NUMBER:
+            elements:
+              - (R)01: '"G1"'
+              - (R)02: $.TreatmentAuthCodeA
+        - (S)REF_ORIGINAL_REFERENCE_NUMBER__ICN/DCN_:
+            elements:
+              - (R)01: '"F8"'
+              - (R)02: $.DocumentControlNumberA
+        - (R)REF_CLAIM_IDENTIFICATION_NUMBER_FOR_CLEARING_HOUSES_AND_OTHER_TRANSMISSION_INTERMEDIARIES:
+            elements:
+              - (R)01: '"D9"'
+              - (R)02: $.image_name
+        - (S)REF_MEDICAL_RECORD_NUMBER:
+            elements:
+              - (R)01: '"EA"'
+              - (R)02: $.MedicalRecordNumber
+        - (S)NTE_CLAIM_NOTE__:
+            elements:
+              - (R)01: '"ADD"'
+              - (R)02: $.Remarks
+        - (R)HI_PRINCIPAL_DIAGNOSIS:
+            elements:
+              - (R)01:
+                  - (R)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BK" :
+                        ($.UICDIndicator === "0") ? "ABK" : null
+                      )
+                  - (R)2: |
+                      $fallback(
+                        $.PrincipalDiagnosisCode,
+                        "UNK"
+                      )
+                  - (S)9: $unless($substr($.ExpPOA_qual, 3, 1))
+        - (S)HI_Admitting_DIAGNOSIS:
+            elements:
+              - (S)01:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BJ" :
+                        ($.UICDIndicator === "0") ? "ABJ" : null
+                      )
+                  - (R)2: |
+                      $fallback(
+                        $.AdmittingDiagnosisCode,
+                        $.PrincipalDiagnosisCode
+                      )
+        - (S)HI_PATIENT_S_REASON_FOR_VISIT:
+            elements:
+              - (R)01:
+                  - (R)1: |
+                      $fallback(
+                        (
+                        ($.UICDIndicator === "9") ? "PR" :
+                        ($.UICDIndicator === "0") ? "APR" : null
+                      ),
+                        ""
+                      )
+                  - (R)2: |
+                      $fallback(
+                        $.PatientReasonDXA,
+                        $.PrincipalDiagnosisCode
+                      )
+              - (S)02:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "PR" :
+                        ($.UICDIndicator === "0") ? "APR" : null
+                      )
+                  - (R)2: $.PatientReasonDXB
+              - (S)03:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "PR" :
+                        ($.UICDIndicator === "0") ? "APR" : null
+                      )
+                  - (R)2: $.PatientReasonDXC
+        - (S)HI_EXTERNAL_CAUSE_OF_INJURY:
+            elements:
+              - (S)01:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BN" :
+                        ($.UICDIndicator === "0") ? "ABN" : null
+                      )
+                  - (R)2: $.ECA
+              - (S)02:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BN" :
+                        ($.UICDIndicator === "0") ? "ABN" : null
+                      )
+                  - (R)2: $.ECB
+              - (S)03:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BN" :
+                        ($.UICDIndicator === "0") ? "ABN" : null
+                      )
+                  - (R)2: $.ECC
+        - (S)HI_HEALTH_CARE_DIAGNOSIS_CODE_HCFA_/_DIAGNOSIS_RELATED_GROUP_INFO_UB92_:
+            elements:
+              - (R)01:
+                  - (R)1: '"DR"'
+                  - (R)2: |
+                      $fallback(
+                        $.PPSCode,
+                        $.Block78
+                      )
+        - (S)HI_OTHER_DIAGNOSIS_INFO:
+            elements:
+              - (R)01:
+                  - (R)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: |
+                      $fallback(
+                        $.OtherDiagnosisCodeA,
+                        $.OtherDiagnosisCode68
+                      )
+                  - (S)9: $unless($substr($.ExpPOA_qual, 4, 1))
+              - (S)02:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: |
+                      $fallback(
+                        $.OtherDiagnosisCodeB,
+                        $.OtherDiagnosisCode69
+                      )
+                  - (S)9: $unless($substr($.ExpPOA_qual, 5, 1))
+              - (S)03:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: |
+                      $fallback(
+                        $.OtherDiagnosisCodeC,
+                        $.OtherDiagnosisCode70
+                      )
+                  - (S)9:  $unless($substr($.ExpPOA_qual, 6, 1))
+              - (S)04:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: |
+                      $fallback(
+                        $.OtherDiagnosisCodeD,
+                        $.OtherDiagnosisCode71
+                      )
+                  - (S)9:  $unless($substr($.ExpPOA_qual, 7, 1))
+              - (S)05:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: |
+                      $fallback(
+                        $.OtherDiagnosisCodeE,
+                        $.OtherDiagnosisCode72
+                      )
+                  - (S)9:  $unless($substr($.ExpPOA_qual, 8, 1))
+              - (S)06:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: |
+                      $fallback(
+                        $.OtherDiagnosisCodeF,
+                        $.OtherDiagnosisCode73
+                      )
+                  - (S)9:  $unless($substr($.ExpPOA_qual, 9, 1))
+              - (S)07:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: |
+                      $fallback(
+                        $.OtherDiagnosisCodeG,
+                        $.OtherDiagnosisCode74
+                      )
+                  - (S)9:   $unless($substr($.ExpPOA_qual, 10, 1))
+              - (S)08:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: |
+                      $fallback(
+                        $.OtherDiagnosisCodeH,
+                        $.OtherDiagnosisCode75
+                      )
+                  - (S)9:  $unless($substr($.ExpPOA_qual, 11, 1))
+              - (S)09:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: $.OtherDiagnosisCodeI
+                  - (S)9: $unless($substr($.ExpPOA_qual, 12, 1))
+              - (S)10:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: $.OtherDiagnosisCodeJ
+                  - (S)9: $unless($substr($.ExpPOA_qual, 13, 1))
+              - (S)11:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: $.OtherDiagnosisCodeK
+                  - (S)9: $unless($substr($.ExpPOA_qual, 14, 1))
+              - (S)12:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: $.OtherDiagnosisCodeL
+                  - (S)9: $unless($substr($.ExpPOA_qual, 15, 1))
+        - (S)HI_OTHER_DIAGNOSIS_INFO_2:
+            elements:
+              - (S)01:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: $.OtherDiagnosisCodeM
+                  - (S)9: $unless($substr($.ExpPOA_qual, 16, 1))
+              - (S)02:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: $.OtherDiagnosisCodeN
+                  - (S)9: $unless($substr($.ExpPOA_qual, 17, 1))
+              - (S)03:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: $.OtherDiagnosisCodeO
+                  - (S)9: $unless($substr($.ExpPOA_qual, 18, 1))
+              - (S)04:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: $.OtherDiagnosisCodeP
+                  - (S)9: $unless($substr($.ExpPOA_qual, 19, 1))
+              - (S)05:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BF" :
+                        ($.UICDIndicator === "0") ? "ABF" : null
+                      )
+                  - (R)2: $.OtherDiagnosisCodeQ
+                  - (S)9: $unless($substr($.ExpPOA_qual, 20, 1))
+        - (S)HI_PRINCIPAL_PROCEDURE_INFO:
+            elements:
+              - (R)01:
+                  - (R)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BR" :
+                        ($.UICDIndicator === "0") ? "BBR" : null
+                      )
+                  - (R)2: $.PrincipalProcedureCode
+                  - (S)3: '"D8"'
+                  - (S)4:  $dateFmt($.PrincipalProcedureDate, "YYYYMMDD")
+        - (S)HI_OTHER_PROCEDURE_INFO:
+            elements:
+              - (R)01:
+                  - (R)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BQ" :
+                        ($.UICDIndicator === "0") ? "BBQ" : null
+                      )
+                  - (R)2: $.OtherProcedureCode1
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OtherProcedureDate1, "YYYYMMDD")
+              - (S)02:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BQ" :
+                        ($.UICDIndicator === "0") ? "BBQ" : null
+                      )
+                  - (R)2: $.OtherProcedureCode2
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OtherProcedureDate2, "YYYYMMDD")
+              - (S)03:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BQ" :
+                        ($.UICDIndicator === "0") ? "BBQ" : null
+                      )
+                  - (R)2: $.OtherProcedureCode3
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OtherProcedureDate3, "YYYYMMDD")
+              - (S)04:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BQ" :
+                        ($.UICDIndicator === "0") ? "BBQ" : null
+                      )
+                  - (R)2: $.OtherProcedureCode4
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OtherProcedureDate4, "YYYYMMDD")
+              - (S)05:
+                  - (S)1: |
+                      (
+                        ($.UICDIndicator === "9") ? "BQ" :
+                        ($.UICDIndicator === "0") ? "BBQ" : null
+                      )
+                  - (R)2: $.OtherProcedureCode5
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OtherProcedureDate5, "YYYYMMDD")
+        - (S)HI_OCCURANCE_SPAN_INFO:
+            elements:
+              - (R)01:
+                  - (R)1: '"BI"'
+                  - (R)2: $.OccurrenceSpanCode1
+                  - (S)3: '"RD8"'
+                  - (S)4: >
+                      $dateFmt($.OccurrenceSpanFromDate1, "YYYYMMDD") + "-" +
+                      $dateFmt($.OccurrenceSpanToDate1, "YYYYMMDD")
+              - (S)02:
+                  - (S)1: '"BI"'
+                  - (R)2: $.OccurrenceSpanCode2
+                  - (S)3: '"RD8"'
+                  - (S)4: >
+                      $dateFmt($.OccurrenceSpanFromDate2, "YYYYMMDD") + "-" +
+                       $dateFmt($.OccurrenceSpanToDate2, "YYYYMMDD")
+              - (S)03:
+                  - (S)1: '"BI"'
+                  - (R)2: $.OccurrenceSpanCode3
+                  - (S)3: '"RD8"'
+                  - (S)4: >
+                      $dateFmt($.OccurrenceSpanFromDate3, "YYYYMMDD")
+                      + "-" +
+                      $dateFmt($.OccurrenceSpanToDate3, "YYYYMMDD")                        
+              - (S)04:
+                  - (S)1: '"BI"'
+                  - (R)2: $.OccurrenceSpanCode4
+                  - (S)3: '"RD8"'
+                  - (S)4: >
+                      $dateFmt($.OccurrenceSpanFromDate4, "YYYYMMDD")) + "-" +
+                      $dateFmt($.OccurrenceSpanToDate4 , "YYYYMMDD"))
+        - (S)HI_OCCURANCE_INFO:
+            elements:
+              - (R)01:
+                  - (R)1: '"BH"'
+                  - (R)2: $.OccurrenceCode1
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OccurrenceDate1, "YYYYMMDD")
+              - (S)02:
+                  - (S)1: '"BH"'
+                  - (R)2: $.OccurrenceCode2
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OccurrenceDate2, "YYYYMMDD")
+              - (S)03:
+                  - (S)1: '"BH"'
+                  - (R)2: $.OccurrenceCode3
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OccurrenceDate3, "YYYYMMDD")
+              - (S)04:
+                  - (S)1: '"BH"'
+                  - (R)2: $.OccurrenceCode4
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OccurrenceDate4, "YYYYMMDD")
+              - (S)05:
+                  - (S)1: '"BH"'
+                  - (R)2: $.OccurrenceCode5
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OccurrenceDate5, "YYYYMMDD")
+              - (S)06:
+                  - (S)1: '"BH"'
+                  - (R)2: $.OccurrenceCode6
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OccurrenceDate6, "YYYYMMDD")
+              - (S)07:
+                  - (S)1: '"BH"'
+                  - (R)2: $.OccurrenceCode7
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OccurrenceDate7, "YYYYMMDD")
+              - (S)08:
+                  - (S)1: '"BH"'
+                  - (R)2: $.OccurrenceCode8
+                  - (S)3: '"D8"'
+                  - (S)4: $dateFmt($.OccurrenceDate8, "YYYYMMDD")
+        - (S)HI_VALUE_INFO:
+            elements:
+              - (R)01:
+                  - (R)1: '"BE"'
+                  - (R)2: $.ValueCode1
+                  - (S)5: $centToDollar($.ValueAmount1)
+              - (S)02:
+                  - (S)1: '"BE"'
+                  - (R)2: $.ValueCode2
+                  - (S)5: $centToDollar($.ValueAmount2)
+              - (S)03:
+                  - (S)1: '"BE"'
+                  - (R)2: $.ValueCode3
+                  - (S)5: $centToDollar($.ValueAmount3)
+              - (S)04:
+                  - (S)1: '"BE"'
+                  - (R)2: $.ValueCode4
+                  - (S)5: $centToDollar($.ValueAmount4)
+              - (S)05:
+                  - (S)1: '"BE"'
+                  - (R)2: $.ValueCode5
+                  - (S)5: $centToDollar($.ValueAmount5)
+              - (S)06:
+                  - (S)1: '"BE"'
+                  - (R)2: $.ValueCode6
+                  - (S)5: $centToDollar($.ValueAmount6)
+              - (S)07:
+                  - (S)1: '"BE"'
+                  - (R)2: $.ValueCode7
+                  - (S)5: $centToDollar($.ValueAmount7)
+              - (S)08:
+                  - (S)1: '"BE"'
+                  - (R)2: $.ValueCode8
+                  - (S)5: $centToDollar($.ValueAmount8)
+              - (S)09:
+                  - (S)1: '"BE"'
+                  - (R)2: $.ValueCode9
+                  - (S)5: $centToDollar($.ValueAmount9)
+              - (S)10:
+                  - (S)1: '"BE"'
+                  - (R)2: $.ValueCode10
+                  - (S)5: $centToDollar($.ValueAmount10)
+              - (S)11:
+                  - (S)1: '"BE"'
+                  - (R)2: $.ValueCode11
+                  - (S)5: $centToDollar($.ValueAmount11)
+              - (S)12:
+                  - (S)1: '"BE"'
+                  - (R)2: $.ValueCode12
+                  - (S)5: $centToDollar($.ValueAmount12)
+        - (S)HI_CONDITION_INFO:
+            elements:
+              - (R)01:
+                  - (R)1: '"BG"'
+                  - (R)2: $.ConditionCode24
+              - (S)02:
+                  - (S)1: '"BG"'
+                  - (R)2: $.ConditionCode25
+              - (S)03:
+                  - (S)1: '"BG"'
+                  - (R)2: $.ConditionCode26
+              - (S)04:
+                  - (S)1: '"BG"'
+                  - (R)2: $.ConditionCode27
+              - (S)05:
+                  - (S)1: '"BG"'
+                  - (R)2: $.ConditionCode28
+              - (S)06:
+                  - (S)1: '"BG"'
+                  - (R)2: $.ConditionCode29
+              - (S)07:
+                  - (S)1: '"BG"'
+                  - (R)2: $.ConditionCode30
+        - (S)QTY_CLAIM_QUANTITY_-_COVERED_ACTUAL__UB_92_:
+            elements:
+              - (R)01: '"CA"'
+              - (R)02: $.CoveredDays
+              - (R)03: '"DA"'
+        - (S)QTY_CLAIM_QUANTITY_-_COINSURED_ACTUAL__UB_92_:
+            elements:
+              - (R)01: '"CD"'
+              - (R)02: $.CoinsuranceDays
+              - (R)03: '"DA"'
+        - (S)QTY_CLAIM_QUANTITY_-_LIFE_TIME_RESERVE_ACTUAL__UB_92_:
+            elements:
+              - (R)01: '"LA"'
+              - (R)02: $.LifetimeReservedDays
+              - (R)03: '"DA"'
+        - (S)QTY_CLAIM_QUANTITY_-_NUMBER_OF_NON-COVERED_DAYS_ACTUAL__UB_92_:
+            elements:
+              - (R)01: '"NA"'
+              - (R)02: $.NonCoveredDays
+              - (R)03: '"DA"'
+        - (S)NM1_ATTENDING_PHYSICAN_NAME:
+            elements:
+              - (R)01: '"71"'
+              - (R)02: '"1"'
+              - (R)03: |
+                  $fallback(
+                    $.AttendingPhysicianLastName,
+                    "UNKNOWN"
+                  )
+              - (S)04: |
+                  $fallback(
+                    $.AttendingPhysicianFirstName,
+                    "UNKNOWN"
+                  )
+              - (R)08: '"XX"'
+              - (R)09: |
+                  $fallback(
+                    $.AttendingPhysicianNPI,
+                    "0000000006"
+                  )
+        - (S)NM1_OPERATING_PHYSICIAN_NAME:
+            elements:
+              - (R)01: '"72"'
+              - (R)02: '"1"'
+              - (R)03: $.OperatingPhysicianLastName
+              - (S)04: |
+                  $fallback(
+                    $.OperatingPhysicianFirstName,
+                    "UNKNOWN"
+                  )
+              - (R)08: '"XX"'
+              - (R)09: |
+                  $fallback(
+                    $.OperatingPhysicianNPI,
+                    "0000000006"
+                  )
+        - (S)NM1_OTHER_PROVIDER_NAME:
+            elements:
+              - (R)01: '"ZZ"'
+              - (R)02: '"1"'
+              - (R)03: $.OtherPhysicianLastNameA
+              - (S)04: |
+                  $fallback(
+                    $.OtherPhysicianFirstNameA,
+                    "UNKNOWN"
+                  )
+              - (R)08: '"XX"'
+              - (R)09: |
+                  $fallback(
+                    $.OtherPhysicianNPIA,
+                    "0000000006"
+                  )
+        - (S)2310D:
+            components:
+              - (S)NM1_SERVICE_FACILITY_LOCATION:
+                  elements:
+                    - (R)01: '"77"'
+                    - (R)02: '"2"'
+                    - (S)03: $.Facility_Name
+                    - (S)08: '"XX"'
+                    - (S)09: |
+                        $fallback(
+                          $.NPI,
+                          "0000000006"
+                        )
+              - (R)N3_SERVICE_FACILITY_LOCATION_ADDRESS:
+                  elements:
+                    - (R)01: $.ClientAddress__Address1
+                    - (S)02: $.ClientAddress__Address2
+              - (R)N4_SERVICE_FACILITY_LOCATION_CITY/STATE/ZIP:
+                  elements:
+                    - (R)01: $.ClientAddress__City
+                    - (R)02: $.ClientAddress__State
+                    - (R)03: $zip9($.ClientAddress__Zip)
+        - (S)2400:
+            context: $loop_using($, "RevenueCode", "HCPCS/Rates")
+            components:
+              - (R)LX_SERVICE_LINE:
+                  elements:
+                    - (R)01: $._item_idx + 1
+              - (S)SV2_INSTITUTIONAL_SERVICE_LINE:
+                  elements:
+                    - (S)01: $.RevenueCode
+                    - (R)02:
+                        - (S)1: '"HC"'
+                        - (R)2: |
+                              var $r = $try($number, $.RevenueCode);
+                              (100 <= $r and $r <= 219) 
+                                ? null
+                                : $substr($.`HCPCS/Rates`, 0, 5)
+                        - (S)3: $substr($.`HCPCS/Rates`, 5, 2)
+                        - (S)4: $substr($.`HCPCS/Rates`, 7, 2)
+                        - (S)5: $substr($.`HCPCS/Rates`, 9, 2)
+                        - (S)6: $substr($.`HCPCS/Rates`, 11, 2)
+                    - (R)03: >-
+                        $centToDollar($.TotalCharges ? $.TotalCharges : "0")
+                    - (R)04: |
+                        (
+                          var $r = $try($number, $.RevenueCode);
+                          (100 <= $r and $r <= 219) 
+                            ? "DA"
+                            : "UN"
+                        )
+                    - (S)05: $.ServiceUnits
+                    - (S)07: $centToDollar($.NonCoveredCharges)
+              - (S)DTP_DATE_-_SERVICE_DATE_UB92_:
+                  elements:
+                    - (R)01: '"472"'
+                    - (R)02: '"D8"'
+                    - (R)03: $dateFmt($.ServiceDate, "YYYYMMDD")
+              - (S)2410:
+                  components:
+                    - (S)LIN_Drug_Identification:
+                        elements:
+                          - (R)02: '"N4"'
+                          - (R)03: $.NDC_PRODUCT
+                    - (S)CTP_DRUG_PRICING:
+                        elements:
+                          - (R)04: $.NDC_UNITS
+                          - (R)05: $.NDC_UOM

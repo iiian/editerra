@@ -20,17 +20,19 @@ pub fn map_edi(
      *  2. Convert that intermediate representation into EDI.
      *
      * The two steps correspond to the two function calls, `evaluate_scope` and
-     * `ir2edi` below.
+     * `ir2edilines` below.
      *
      * The purpose for an intermediate representation is to make the suppression
-     * system more maintainable. Suppression essentially necessitates the
+     * system more manageable. Suppression essentially necessitates the
      * existence of *some* intermediate representation, because the EDI
      * suppression system is fundamentally hierarchical.
      */
     let scope = map.map;
     let chunks = map.chunks;
     let tree = evaluate_scope(engine, &scope, &chunks)?;
-    ir2edi(&tree, delimiters)
+    let lines = ir2edilines(&tree, delimiters)?;
+
+    Ok(lines.map(|o| (o.join(&delimiters.nl.clone().unwrap()))))
 }
 
 struct LoopNode {
@@ -131,8 +133,10 @@ fn evaluate_scope(
                     .find(|&e| {
                         if let Scope::Loop(loop_scope) = e {
                             match loop_scope {
-                                Loop::Normal(NormalLoop { name, .. }) => name == attach,
-                                Loop::Conditional(ConditionalLoop { name, .. }) => name == attach,
+                                Loop::Normal(NormalLoop { name, .. }) => &name[3..] == attach,
+                                Loop::Conditional(ConditionalLoop { name, .. }) => {
+                                    &name[3..] == attach
+                                }
                             }
                         } else {
                             false
@@ -449,8 +453,7 @@ fn evaluate_element(engine: &mut ExprEngine, element: &Element) -> Result<IRElem
     }
 }
 
-fn ir2edi(node: &IRNode, del: &Delimiters) -> Result<Option<String>, MapEdiError> {
-    let nl = del.nl.clone().unwrap_or_else(String::new);
+fn ir2edilines(node: &IRNode, del: &Delimiters) -> Result<Option<Vec<String>>, MapEdiError> {
     match node {
         IRNode::LoopNode(LoopNode {
             name,
@@ -460,36 +463,29 @@ fn ir2edi(node: &IRNode, del: &Delimiters) -> Result<Option<String>, MapEdiError
             if let Some(components) = components {
                 let subscopes = components
                     .into_iter()
-                    .map(|c| ir2edi(c, del))
+                    .map(|c| ir2edilines(c, del))
                     .collect::<Vec<_>>();
 
-                let mut parts = Vec::new();
-                for result in subscopes {
-                    match result {
-                        Ok(something) => parts.push(something),
+                let mut out_lines = Vec::new();
+                for subscope in subscopes {
+                    match subscope {
+                        Ok(ok) => {
+                            if let Some(subscope) = ok {
+                                out_lines.extend(subscope);
+                            }
+                        }
                         Err(error) => {
                             if *required {
                                 return Err(MapEdiError::UnmetRequirement(format!(
                                     "{}{}",
                                     name, error
                                 )));
-                            } else {
-                                parts.push(None);
                             }
                         }
                     }
                 }
 
-                let mut result: String = String::new();
-                for part in parts {
-                    match part {
-                        Some(part) => result.extend(part.chars()),
-                        None => result.extend(nl.clone().chars()),
-                    };
-                }
-                result.extend(nl.chars());
-
-                Ok(Some(result))
+                Ok(Some(out_lines))
             } else if !required {
                 Ok(None)
             } else {
@@ -567,7 +563,7 @@ fn ir2edi(node: &IRNode, del: &Delimiters) -> Result<Option<String>, MapEdiError
                 .trim_end_matches(&del.el)
                 .to_string();
             segment.extend(del.le.chars());
-            Ok(Some(segment))
+            Ok(Some(vec![segment]))
         }
     }
 }

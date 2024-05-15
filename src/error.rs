@@ -14,7 +14,7 @@ pub enum MapEdiError {
 
 #[macro_export]
 macro_rules! exp_errf {
-    () => {
-        |e| MapEdiError::ExprEngineErr(e.to_string())
+    ($a:expr) => {
+        |e| MapEdiError::ExprEngineErr(format!("{}{}", $a, e.to_string()))
     };
 }
